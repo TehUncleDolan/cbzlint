@@ -75,7 +75,7 @@ impl Book {
         get_file_name(&self.path)
     }
 
-    /// Check the book and return a list of errorsm if any.
+    /// Check the book and return a list of errors if any.
     pub(crate) fn check(
         &self,
         client: &bedetheque::Client,

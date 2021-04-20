@@ -18,9 +18,9 @@ impl fmt::Display for Error {
             Self::Year(y) => {
                 let y = y.iter().map(ToString::to_string).collect::<Vec<_>>();
                 if y.len() == 1 {
-                    write!(f, "invalid years, expected {}", y[0])
+                    write!(f, "invalid year, expected {}", y[0])
                 } else {
-                    write!(f, "invalid years, expected one of {}", y.join(", "))
+                    write!(f, "invalid year, expected one of {}", y.join(", "))
                 }
             },
             Self::Width { page, width } => {
