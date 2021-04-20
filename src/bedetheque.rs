@@ -38,6 +38,11 @@ static LINKS_SELECTOR: Lazy<kuchiki::Selectors> = Lazy::new(|| {
         .expect("invalid links selector")
 });
 
+/// CSS selector to extract the series title.
+static TITLE_SELECTOR: Lazy<kuchiki::Selectors> = Lazy::new(|| {
+    kuchiki::Selectors::compile(".serie").expect("invalid title selector")
+});
+
 /// CSS selector to extract the volume number, if any.
 static VOLUME_SELECTOR: Lazy<kuchiki::Selectors> = Lazy::new(|| {
     kuchiki::Selectors::compile(".num").expect("invalid volume selector")
@@ -86,7 +91,6 @@ impl Client {
         url.query_pairs_mut()
             .append_pair("csrf_token_bel", &csrf_token)
             .append_pair("RechSerie", title)
-            .append_pair("RechOrigine", "2") // 2 = Asie
             .append_pair("RechLangue", "Français");
 
         self.get_link(title, volume, &url)
@@ -125,7 +129,22 @@ impl Client {
         let mut res = None;
 
         let html = self.get_html(url)?;
-        for node in LINKS_SELECTOR.filter(html.descendants().elements()) {
+        // First, look for an exact match.
+        let mut nodes = LINKS_SELECTOR
+            .filter(html.descendants().elements())
+            .filter(|element| is_right_series(element.as_node(), title, true))
+            .collect::<Vec<_>>();
+        // If none are found, fallback on prefix then...
+        if nodes.is_empty() {
+            nodes = LINKS_SELECTOR
+                .filter(html.descendants().elements())
+                .filter(|element| {
+                    is_right_series(element.as_node(), title, false)
+                })
+                .collect::<Vec<_>>();
+        }
+
+        for node in nodes {
             let attributes = node.attributes.borrow();
             let link = attributes.get("href").context("book URL not found")?;
             let url = Url::parse(link)
@@ -144,7 +163,7 @@ impl Client {
             self.cache.borrow_mut().insert(key, url);
         }
 
-        res.ok_or_else(|| anyhow!("cannot find book"))
+        res.ok_or_else(|| anyhow!("cannot find book on bedetheque"))
     }
 
     /// Retrieve and parse the page at `url`.
@@ -184,4 +203,26 @@ fn get_book_number(node: &kuchiki::NodeRef) -> Result<Option<u8>> {
         .parse::<u8>()
         .context("invalid book number")
         .map(Some)
+}
+
+/// Check if the series under `node` is the right one (i.e. matches `title`).
+#[allow(clippy::filter_next)]
+fn is_right_series(
+    node: &kuchiki::NodeRef,
+    title: &str,
+    exact_match: bool,
+) -> bool {
+    match TITLE_SELECTOR.filter(node.descendants().elements()).next() {
+        Some(node) => {
+            let text = node.text_contents().replace("!", "");
+            let text = text.trim().to_lowercase();
+
+            if exact_match {
+                text == title.to_lowercase()
+            } else {
+                text.starts_with(&title.to_lowercase())
+            }
+        },
+        None => false,
+    }
 }

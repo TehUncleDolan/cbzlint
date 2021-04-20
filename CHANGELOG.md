@@ -19,6 +19,7 @@ Possible sections are:
 
 - Display which bedetheque page has been used to check metadata
 - Improve romanization handling (fuzzy matching)
+- New logic to find the right book on bedetheque, more robust
 
 ### Changed
 
