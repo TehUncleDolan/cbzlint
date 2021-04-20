@@ -190,7 +190,7 @@ impl Book {
             .fetch_info(&self.url)
             .context("failed to get metadata from bedetheque")?;
 
-        if info.authors.to_lowercase() != self.authors.to_lowercase() {
+        if normalize(&info.authors) != normalize(&self.authors) {
             errors.push(Error::Authors(info.authors));
         }
 
@@ -208,4 +208,21 @@ fn get_file_name(path: &Path) -> &str {
         .expect("filename")
         .to_str()
         .expect("valid UTF-8")
+}
+
+/// Normalize authors list for easier comparison, best effort...
+fn normalize(authors: &str) -> String {
+    authors
+        // Case insensitive.
+        .to_lowercase()
+        // Romanization mismatch.
+        .replace("ā", "aa")
+        .replace("â", "aa")
+        .replace("ū", "uu")
+        .replace("û", "uu")
+        .replace("ē", "ee")
+        .replace("ê", "ee")
+        .replace("ō", "ou")
+        .replace("ô", "ou")
+        .replace("oo", "ou")
 }

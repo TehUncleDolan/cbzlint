@@ -18,6 +18,7 @@ Possible sections are:
 ### Added
 
 - Display which bedetheque page has been used to check metadata
+- Improve romanization handling (fuzzy matching)
 
 ### Changed
 
