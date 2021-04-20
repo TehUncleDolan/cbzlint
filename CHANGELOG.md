@@ -15,6 +15,8 @@ Possible sections are:
 
 ## [Unreleased] - ReleaseDate
 
+## [0.1.1] - 2021-04-20
+
 ### Added
 
 - Display which bedetheque page has been used to check metadata
