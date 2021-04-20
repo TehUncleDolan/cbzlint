@@ -19,6 +19,7 @@ use std::{
         PathBuf,
     },
 };
+use url::Url;
 use zip::{
     read::ZipFile,
     ZipArchive,
@@ -43,6 +44,7 @@ static ONESHOT_REGEX: Lazy<Regex> = Lazy::new(|| {
 #[derive(Debug)]
 pub(crate) struct Book {
     path: PathBuf,
+    url: Url,
     title: String,
     volume: Option<u8>,
     authors: String,
@@ -52,7 +54,10 @@ pub(crate) struct Book {
 
 impl Book {
     /// Initialize a new book by extracting information from its name.
-    pub(crate) fn new(path: &Path) -> Result<Self> {
+    pub(crate) fn new(
+        client: &bedetheque::Client,
+        path: &Path,
+    ) -> Result<Self> {
         let filename = get_file_name(path);
 
         if path.extension() != Some(OsStr::new("cbz")) {
@@ -67,12 +72,17 @@ impl Book {
             bail!("cannot extract info from filename")
         };
 
-        Ok(Self::new_from_captures(path.to_owned(), &captures))
+        Self::new_from_captures(client, path.to_owned(), &captures)
     }
 
     /// Return the file name of the book.
     pub(crate) fn file_name(&self) -> &str {
         get_file_name(&self.path)
+    }
+
+    /// Return the bedetheque URL used to check the metadata.
+    pub(crate) fn ref_url(&self) -> &Url {
+        &self.url
     }
 
     /// Check the book and return a list of errors if any.
@@ -100,37 +110,46 @@ impl Book {
     }
 
     fn new_from_captures(
+        client: &bedetheque::Client,
         path: PathBuf,
         captures: &regex::Captures<'_>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self> {
+        let title = captures
+            .name("title")
+            .expect("invalid capture group for title")
+            .as_str()
+            .to_owned();
+        let volume = captures
+            .name("volume")
+            .map(|m| m.as_str().parse::<u8>().expect("valid volume"));
+        let authors = captures
+            .name("authors")
+            .expect("invalid capture group for authors")
+            .as_str()
+            .to_owned();
+        let year = captures
+            .name("year")
+            .expect("invalid capture group for year")
+            .as_str()
+            .parse::<u16>()
+            .expect("valid year");
+        let width = captures
+            .name("width")
+            .expect("invalid capture group for width")
+            .as_str()
+            .parse::<usize>()
+            .expect("valid width");
+        let url = client.find_book(&title, volume)?;
+
+        Ok(Self {
             path,
-            title: captures
-                .name("title")
-                .expect("invalid capture group for title")
-                .as_str()
-                .to_owned(),
-            volume: captures
-                .name("volume")
-                .map(|m| m.as_str().parse::<u8>().expect("valid volume")),
-            authors: captures
-                .name("authors")
-                .expect("invalid capture group for authors")
-                .as_str()
-                .to_owned(),
-            year: captures
-                .name("year")
-                .expect("invalid capture group for year")
-                .as_str()
-                .parse::<u16>()
-                .expect("valid year"),
-            width: captures
-                .name("width")
-                .expect("invalid capture group for width")
-                .as_str()
-                .parse::<usize>()
-                .expect("valid width"),
-        }
+            url,
+            title,
+            volume,
+            authors,
+            year,
+            width,
+        })
     }
 
     /// Check that the width of every image match the name.
@@ -168,7 +187,7 @@ impl Book {
         errors: &mut Vec<Error>,
     ) -> Result<()> {
         let info = client
-            .get_book_info(&self.title, self.volume)
+            .fetch_info(&self.url)
             .context("failed to get metadata from bedetheque")?;
 
         if info.authors != self.authors {

@@ -66,20 +66,12 @@ impl Client {
         }
     }
 
-    /// Retrieve metadata for the given volume of the specified series.
-    pub(crate) fn get_book_info(
+    /// Find the book's URL on bedetheque.
+    pub(crate) fn find_book(
         &self,
         title: &str,
         volume: Option<u8>,
-    ) -> Result<VolumeInfo> {
-        thread::sleep(Duration::new(1, 0));
-
-        let url = self.find_book(title, volume)?;
-        self.fetch_info(&url)
-    }
-
-    /// Find the book's URL on bedetheque.
-    fn find_book(&self, title: &str, volume: Option<u8>) -> Result<Url> {
+    ) -> Result<Url> {
         let key = Volume {
             title: title.to_owned(),
             volume,
@@ -101,7 +93,7 @@ impl Client {
     }
 
     /// Extract metadata from the book's page.
-    fn fetch_info(&self, url: &Url) -> Result<VolumeInfo> {
+    pub(crate) fn fetch_info(&self, url: &Url) -> Result<VolumeInfo> {
         let html = self.get_html(url)?;
 
         Ok(VolumeInfo::new(&html))
@@ -157,6 +149,9 @@ impl Client {
 
     /// Retrieve and parse the page at `url`.
     fn get_html(&self, url: &Url) -> Result<kuchiki::NodeRef> {
+        // Don't get banned from bedetheque...
+        thread::sleep(Duration::new(1, 0));
+
         let response = self
             .agent
             .request_url("GET", url)
