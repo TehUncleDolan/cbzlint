@@ -19,6 +19,10 @@ Possible sections are:
 
 - Display which bedetheque page has been used to check metadata
 
+### Changed
+
+- Authors list comparison is case-insensitive
+
 ## [0.1.0] - 2021-04-20
 
 ### Added

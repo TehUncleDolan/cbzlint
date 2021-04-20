@@ -190,7 +190,7 @@ impl Book {
             .fetch_info(&self.url)
             .context("failed to get metadata from bedetheque")?;
 
-        if info.authors != self.authors {
+        if info.authors.to_lowercase() != self.authors.to_lowercase() {
             errors.push(Error::Authors(info.authors));
         }
 
