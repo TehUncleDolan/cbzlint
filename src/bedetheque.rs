@@ -90,7 +90,7 @@ impl Client {
         let mut url = SEARCH_URL.clone();
         url.query_pairs_mut()
             .append_pair("csrf_token_bel", &csrf_token)
-            .append_pair("RechSerie", title)
+            .append_pair("RechSerie", &normalize(title))
             .append_pair("RechLangue", "Français");
 
         self.get_link(title, volume, &url)
@@ -212,17 +212,24 @@ fn is_right_series(
     title: &str,
     exact_match: bool,
 ) -> bool {
+    let title = normalize(title);
+
     match TITLE_SELECTOR.filter(node.descendants().elements()).next() {
         Some(node) => {
             let text = node.text_contents().replace("!", "");
             let text = text.trim().to_lowercase();
 
             if exact_match {
-                text == title.to_lowercase()
+                text == title
             } else {
-                text.starts_with(&title.to_lowercase())
+                text.starts_with(&title)
             }
         },
         None => false,
     }
+}
+
+/// Normalize the series' title for bedetheque.
+fn normalize(title: &str) -> String {
+    title.replace("- ", "").to_lowercase()
 }
