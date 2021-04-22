@@ -15,6 +15,8 @@ Possible sections are:
 
 ## [Unreleased] - ReleaseDate
 
+## [0.1.2] - 2021-04-22
+
 ### Fixed
 
 - Ignore hyphen in series' title
