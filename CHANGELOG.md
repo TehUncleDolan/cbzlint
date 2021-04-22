@@ -15,6 +15,10 @@ Possible sections are:
 
 ## [Unreleased] - ReleaseDate
 
+### Changed
+
+- Do not print one message per page whose size does not match
+
 ## [0.1.2] - 2021-04-22
 
 ### Fixed

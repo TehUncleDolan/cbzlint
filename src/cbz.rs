@@ -103,7 +103,10 @@ impl Book {
                 continue;
             }
 
-            self.check_width(&mut entry, &mut errors)?;
+            if !self.check_width(&mut entry, &mut errors)? {
+                // We found an error, we can stop here.
+                break;
+            }
         }
 
         Ok(errors)
@@ -161,7 +164,7 @@ impl Book {
         &self,
         entry: &mut ZipFile<'_>,
         errors: &mut Vec<Error>,
-    ) -> Result<()> {
+    ) -> Result<bool> {
         let mut bytes: Vec<u8> = vec![];
         std::io::copy(entry, &mut bytes).with_context(|| {
             format!("failed to read image {}", entry.name())
@@ -171,13 +174,11 @@ impl Book {
             .width;
 
         if width != self.width && width != 2 * self.width {
-            errors.push(Error::Width {
-                page: get_file_name(Path::new(entry.name())).to_owned(),
-                width,
-            })
+            errors.push(Error::Width);
+            return Ok(false);
         }
 
-        Ok(())
+        Ok(true)
     }
 
     /// Check the book's metadata (authors, publication years, ...)

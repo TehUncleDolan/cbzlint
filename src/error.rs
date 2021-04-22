@@ -6,7 +6,7 @@ use std::{
 pub(crate) enum Error {
     Authors(String),
     Year(BTreeSet<u16>),
-    Width { page: String, width: usize },
+    Width,
 }
 
 impl fmt::Display for Error {
@@ -23,8 +23,8 @@ impl fmt::Display for Error {
                     write!(f, "invalid year, expected one of {}", y.join(", "))
                 }
             },
-            Self::Width { page, width } => {
-                write!(f, "unexpected width ({}) for {}", width, page)
+            Self::Width => {
+                write!(f, "some images have unexpected width")
             },
         }
     }
