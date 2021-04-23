@@ -22,6 +22,7 @@ Possible sections are:
 ### Changed
 
 - Do not print one message per page whose size does not match
+- Be more tolerant for DPR width (allows +/- 10% of variation)
 
 ### Fixed
 

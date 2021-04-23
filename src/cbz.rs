@@ -165,6 +165,9 @@ impl Book {
         entry: &mut ZipFile<'_>,
         errors: &mut Vec<Error>,
     ) -> Result<bool> {
+        // DPR are sometimes edited, so allows 10% of variation.
+        let margin = self.width / 10;
+        let dpr_range = (2 * self.width - margin)..=(2 * self.width + margin);
         let mut bytes: Vec<u8> = vec![];
         std::io::copy(entry, &mut bytes).with_context(|| {
             format!("failed to read image {}", entry.name())
@@ -173,7 +176,7 @@ impl Book {
             .with_context(|| format!("cannot get width for {}", entry.name()))?
             .width;
 
-        if width != self.width && width != 2 * self.width {
+        if width != self.width && !dpr_range.contains(&width) {
             errors.push(Error::Width);
             return Ok(false);
         }
