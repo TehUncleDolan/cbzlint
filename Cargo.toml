@@ -1,6 +1,6 @@
 [package]
 name = "cbzlint"
-version = "0.1.3"
+version = "0.1.4-alpha.0"
 description = "CLI tool to check CBZ naming"
 authors = ["Teh Uncle Dolan"]
 license = "BSD-3-Clause"
