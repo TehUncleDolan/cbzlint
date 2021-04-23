@@ -15,6 +15,10 @@ Possible sections are:
 
 ## [Unreleased] - ReleaseDate
 
+### Added
+
+- Add an empty line between each book, makes output more legible
+
 ### Changed
 
 - Do not print one message per page whose size does not match
