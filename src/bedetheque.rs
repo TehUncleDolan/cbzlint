@@ -93,7 +93,22 @@ impl Client {
             .append_pair("RechSerie", &normalize(title))
             .append_pair("RechLangue", "Français");
 
-        self.get_link(title, volume, &url)
+        let mut res = self.get_link(title, volume, &url);
+
+        // No result with hyphen, try without it then!
+        if res.is_err() && title.contains('-') {
+            let title = title.replace("- ", "");
+
+            url = SEARCH_URL.clone();
+            url.query_pairs_mut()
+                .append_pair("csrf_token_bel", &csrf_token)
+                .append_pair("RechSerie", &normalize(&title))
+                .append_pair("RechLangue", "Français");
+
+            res = self.get_link(&title, volume, &url);
+        }
+
+        res
     }
 
     /// Extract metadata from the book's page.
@@ -231,5 +246,5 @@ fn is_right_series(
 
 /// Normalize the series' title for bedetheque.
 fn normalize(title: &str) -> String {
-    title.replace("- ", "").to_lowercase()
+    title.to_lowercase()
 }

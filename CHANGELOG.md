@@ -19,6 +19,10 @@ Possible sections are:
 
 - Do not print one message per page whose size does not match
 
+### Fixed
+
+- Hyphen handling in series' title
+
 ## [0.1.2] - 2021-04-22
 
 ### Fixed
