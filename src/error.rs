@@ -8,6 +8,7 @@ pub(crate) enum Error {
     Year(BTreeSet<u16>),
     Width,
     Date,
+    Exif,
 }
 
 impl fmt::Display for Error {
@@ -29,6 +30,9 @@ impl fmt::Display for Error {
             },
             Self::Date => {
                 write!(f, "some images have an unexpected last modified date")
+            },
+            Self::Exif => {
+                write!(f, "some images have EXIF metadata")
             },
         }
     }

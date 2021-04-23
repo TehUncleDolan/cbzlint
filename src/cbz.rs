@@ -14,6 +14,10 @@ use regex::Regex;
 use std::{
     ffi::OsStr,
     fs,
+    io::{
+        BufReader,
+        Cursor,
+    },
     path::{
         Path,
         PathBuf,
@@ -114,7 +118,7 @@ impl Book {
                 // We found an error, we can stop here.
                 break;
             }
-            if !self.check_width(&mut entry, &mut errors)? {
+            if !self.check_image(&mut entry, &mut errors)? {
                 // We found an error, we can stop here.
                 break;
             }
@@ -166,23 +170,28 @@ impl Book {
         })
     }
 
-    /// Check that the width of every image match the name.
+    /// Check the image.
     ///
-    /// Width must be equal (single page) or twice as large (dual page).
+    /// Ensure that the width of every image match the name.
     ///
-    /// Returns one error per page with an invalid width.
-    fn check_width(
+    /// Width must be equal (single page) or more or less twice as large (dual
+    /// page).
+    ///
+    /// Also check the presence of EXIF metadata.
+    fn check_image(
         &self,
         entry: &mut ZipFile<'_>,
         errors: &mut Vec<Error>,
     ) -> Result<bool> {
-        // DPR are sometimes edited, so allows 10% of variation.
-        let margin = self.width / 10;
-        let dpr_range = (2 * self.width - margin)..=(2 * self.width + margin);
         let mut bytes: Vec<u8> = vec![];
         std::io::copy(entry, &mut bytes).with_context(|| {
             format!("failed to read image {}", entry.name())
         })?;
+
+        // Check width.
+        // DPR are sometimes edited, so allows 10% of variation.
+        let margin = self.width / 10;
+        let dpr_range = (2 * self.width - margin)..=(2 * self.width + margin);
         let width = imagesize::blob_size(&bytes)
             .with_context(|| format!("cannot get width for {}", entry.name()))?
             .width;
@@ -192,7 +201,21 @@ impl Book {
             return Ok(false);
         }
 
-        Ok(true)
+        // Check EXIF.
+        let mut reader = BufReader::new(Cursor::new(&*bytes));
+        let exifreader = exif::Reader::new();
+        match exifreader.read_from_container(&mut reader) {
+            Ok(_) => {
+                errors.push(Error::Exif);
+                Ok(false)
+            },
+            Err(exif::Error::NotFound(_)) => Ok(true),
+            Err(err) => {
+                Err(err).with_context(|| {
+                    format!("cannot check EXIF for {}", entry.name())
+                })
+            },
+        }
     }
 
     /// Check the book's metadata (authors, publication years, ...)
