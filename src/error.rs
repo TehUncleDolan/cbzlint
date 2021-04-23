@@ -7,6 +7,7 @@ pub(crate) enum Error {
     Authors(String),
     Year(BTreeSet<u16>),
     Width,
+    Date,
 }
 
 impl fmt::Display for Error {
@@ -25,6 +26,9 @@ impl fmt::Display for Error {
             },
             Self::Width => {
                 write!(f, "some images have unexpected width")
+            },
+            Self::Date => {
+                write!(f, "some images have an unexpected last modified date")
             },
         }
     }

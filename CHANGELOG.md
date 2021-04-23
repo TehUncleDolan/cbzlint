@@ -18,6 +18,7 @@ Possible sections are:
 ### Added
 
 - Add an empty line between each book, makes output more legible
+- Check that the last modified time of the images is `2000-01-01 00:00:01`
 
 ### Changed
 

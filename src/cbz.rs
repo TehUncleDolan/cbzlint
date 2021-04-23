@@ -22,6 +22,7 @@ use std::{
 use url::Url;
 use zip::{
     read::ZipFile,
+    DateTime,
     ZipArchive,
 };
 
@@ -39,6 +40,11 @@ static ONESHOT_REGEX: Lazy<Regex> = Lazy::new(|| {
             r#"^(?P<title>.+) \((?P<authors>.+)\) \((?P<year>[0-9]{4})\) \[Digital-(?P<width>[0-9]+)\]"#,
         )
         .expect("valid one-shot regexp")
+});
+
+/// Expected modified date.
+static EXPECTED_DATE: Lazy<DateTime> = Lazy::new(|| {
+    DateTime::from_date_and_time(2000, 1, 1, 0, 0, 1).expect("valid date")
 });
 
 #[derive(Debug)]
@@ -103,6 +109,11 @@ impl Book {
                 continue;
             }
 
+            if !check_date(entry.last_modified()) {
+                errors.push(Error::Date);
+                // We found an error, we can stop here.
+                break;
+            }
             if !self.check_width(&mut entry, &mut errors)? {
                 // We found an error, we can stop here.
                 break;
@@ -204,6 +215,16 @@ impl Book {
 
         Ok(())
     }
+}
+
+/// Check that the date match the expected one.
+fn check_date(date: DateTime) -> bool {
+    // Seconds seems to be inaccurate, don't check it.
+    EXPECTED_DATE.year() == date.year()
+        && EXPECTED_DATE.month() == date.month()
+        && EXPECTED_DATE.day() == date.day()
+        && EXPECTED_DATE.hour() == date.hour()
+        && EXPECTED_DATE.minute() == date.minute()
 }
 
 /// Extract the file name, as UTF-8 string, from a file path.
