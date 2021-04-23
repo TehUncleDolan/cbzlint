@@ -15,6 +15,8 @@ Possible sections are:
 
 ## [Unreleased] - ReleaseDate
 
+## [0.1.3] - 2021-04-23
+
 ### Added
 
 - Add an empty line between each book, makes output more legible
