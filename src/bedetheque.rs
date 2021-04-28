@@ -2,195 +2,109 @@
 
 use crate::metadata::VolumeInfo;
 use anyhow::{
-    anyhow,
+    bail,
     Context,
     Result,
 };
 use kuchiki::traits::*;
 use once_cell::sync::Lazy;
+use regex::Regex;
 use std::{
     cell::RefCell,
-    collections::HashMap,
+    iter::Cycle,
     thread,
     time::Duration,
 };
 use url::Url;
 
 /// Bedetheque homepage.
-static MAIN_URL: Lazy<Url> = Lazy::new(|| {
-    Url::parse("https://www.bedetheque.com/").expect("valid homepage URL")
-});
+const MAIN_URL: &str = "https://www.bedetheque.com/";
 
-/// Bedetheque URL where to submit search form..
-static SEARCH_URL: Lazy<Url> = Lazy::new(|| {
-    Url::parse("https://www.bedetheque.com/search/albums")
-        .expect("valid search URL")
-});
-
-/// CSS selector to extract CSRF token from the form's home page.
-static CSRF_TOKEN_SELECTOR: Lazy<kuchiki::Selectors> = Lazy::new(|| {
-    kuchiki::Selectors::compile("#csrf").expect("invalid CSRF token selector")
-});
+const SEARCH_SCOPE: &str = "site:www.bedetheque.com";
 
 /// CSS selector to extract the book URLs from the search result page.
 static LINKS_SELECTOR: Lazy<kuchiki::Selectors> = Lazy::new(|| {
-    kuchiki::Selectors::compile(".search-list li a")
+    kuchiki::Selectors::compile(".result_header a")
         .expect("invalid links selector")
 });
 
-/// CSS selector to extract the series title.
-static TITLE_SELECTOR: Lazy<kuchiki::Selectors> = Lazy::new(|| {
-    kuchiki::Selectors::compile(".serie").expect("invalid title selector")
+/// Regex matching characters we want to strip from the title.
+static SPECIAL_CHARS: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r#"[#-+!]"#).expect("valid chars regex"));
+
+/// Regex to look for manga format on the book's page.
+static MANGA_FORMAT_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"Format\s+:\s+Format Manga"#).expect("valid format regex")
 });
 
-/// CSS selector to extract the volume number, if any.
-static VOLUME_SELECTOR: Lazy<kuchiki::Selectors> = Lazy::new(|| {
-    kuchiki::Selectors::compile(".num").expect("invalid volume selector")
+/// Regex to look for volume number on the book's page.
+static MANGA_VOLUME_REGEX: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"Tome\s+:\s+(?P<number>[0-9]+)"#).expect("valid volume regex")
 });
 
-/// A volume identifier, used as cache key.
-#[derive(Debug, Eq, Hash, PartialEq)]
-struct Volume {
-    title: String,
-    // Optional because One-Shot don't have one.
-    volume: Option<u8>,
-}
-
-/// A bedetheque client, with caching.
-pub(crate) struct Client {
+/// A bedetheque client.
+pub(crate) struct Client<'a> {
     agent: ureq::Agent,
-    cache: RefCell<HashMap<Volume, Url>>,
+    servers: RefCell<Cycle<std::slice::Iter<'a, Url>>>,
 }
 
-impl Client {
+impl<'a> Client<'a> {
     /// Initialize a new Bedetheque client.
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(serverlist: &'a [Url]) -> Self {
         Self {
             agent: ureq::Agent::new(),
-            cache: RefCell::new(HashMap::new()),
+            servers: RefCell::new(serverlist.iter().cycle()),
         }
     }
 
-    /// Find the book's URL on bedetheque.
-    pub(crate) fn find_book(
+    /// Get the book's metadata.
+    pub(crate) fn fetch_info(
         &self,
         title: &str,
         volume: Option<u8>,
-    ) -> Result<Url> {
-        let key = Volume {
-            title: title.to_owned(),
-            volume,
+    ) -> Result<VolumeInfo> {
+        // Don't get blocked...
+        thread::sleep(Duration::new(2, 0));
+
+        let title = SPECIAL_CHARS.replace_all(title, "");
+        let query = if let Some(number) = volume {
+            format!("{} {} {}", title, number, SEARCH_SCOPE)
+        } else {
+            format!("{} {}", title, SEARCH_SCOPE)
         };
+        let (server, html) = self.search(&query)?;
 
-        if let Some(url) = self.cache.borrow().get(&key) {
-            return Ok(url.clone());
-        }
-
-        let csrf_token = self.get_csrf_token()?;
-        let mut url = SEARCH_URL.clone();
-        url.query_pairs_mut()
-            .append_pair("csrf_token_bel", &csrf_token)
-            .append_pair("RechSerie", &normalize(title))
-            .append_pair("RechLangue", "Français");
-
-        let mut res = self.get_link(title, volume, &url);
-
-        // No result with hyphen, try without it then!
-        if res.is_err() && title.contains('-') {
-            let title = title.replace("- ", "");
-
-            url = SEARCH_URL.clone();
-            url.query_pairs_mut()
-                .append_pair("csrf_token_bel", &csrf_token)
-                .append_pair("RechSerie", &normalize(&title))
-                .append_pair("RechLangue", "Français");
-
-            res = self.get_link(&title, volume, &url);
-        }
-
-        res
-    }
-
-    /// Extract metadata from the book's page.
-    pub(crate) fn fetch_info(&self, url: &Url) -> Result<VolumeInfo> {
-        let html = self.get_html(url)?;
-
-        Ok(VolumeInfo::new(&html))
-    }
-
-    /// Extract the CSRF token from the homepage.
-    #[allow(clippy::filter_next)]
-    fn get_csrf_token(&self) -> Result<String> {
-        let html = self.get_html(&MAIN_URL)?;
-
-        Ok(CSRF_TOKEN_SELECTOR
-            .filter(html.descendants().elements())
-            .next()
-            .context("CSRF token not found")?
-            .attributes
-            .borrow()
-            .get("value")
-            .context("CSRF token missing")?
-            .to_owned())
-    }
-
-    /// Get the book's URLs from the search result of a the given series.
-    fn get_link(
-        &self,
-        title: &str,
-        volume: Option<u8>,
-        url: &Url,
-    ) -> Result<Url> {
-        let mut res = None;
-
-        let html = self.get_html(url)?;
-        // First, look for an exact match.
-        let mut nodes = LINKS_SELECTOR
-            .filter(html.descendants().elements())
-            .filter(|element| is_right_series(element.as_node(), title, true))
-            .collect::<Vec<_>>();
-        // If none are found, fallback on prefix then...
-        if nodes.is_empty() {
-            nodes = LINKS_SELECTOR
-                .filter(html.descendants().elements())
-                .filter(|element| {
-                    is_right_series(element.as_node(), title, false)
-                })
-                .collect::<Vec<_>>();
-        }
-
-        for node in nodes {
-            let attributes = node.attributes.borrow();
+        for element in LINKS_SELECTOR.filter(html.descendants().elements()) {
+            let attributes = element.attributes.borrow();
             let link = attributes.get("href").context("book URL not found")?;
-            let url = Url::parse(link)
+            let mut url = Url::parse(link)
                 .with_context(|| format!("invalid book URL `{}`", link))?;
 
-            let number = get_book_number(node.as_node())?;
+            // Force hostname to avoid the mobile version.
+            url.set_host(Some("www.bedetheque.com"))
+                .expect("valid hostname");
 
-            if number == volume {
-                res = Some(url.clone());
+            // Bedetheque's page for book starts with this prefix.
+            if !url.path().starts_with("/BD-") {
+                continue;
             }
+            let page = self.get_html(&url)?;
 
-            let key = Volume {
-                title: title.to_owned(),
-                volume: number,
-            };
-            self.cache.borrow_mut().insert(key, url);
+            if is_right_book(&page, volume) {
+                return Ok(VolumeInfo::new(url, &page));
+            }
         }
 
-        res.ok_or_else(|| anyhow!("cannot find book on bedetheque"))
+        bail!("cannot find book on bedetheque from {}", server.as_str());
     }
 
     /// Retrieve and parse the page at `url`.
     fn get_html(&self, url: &Url) -> Result<kuchiki::NodeRef> {
-        // Don't get banned from bedetheque...
-        thread::sleep(Duration::new(1, 0));
-
         let response = self
             .agent
             .request_url("GET", url)
             .set("accept", "text/html")
-            .set("Referer", MAIN_URL.as_str())
+            .set("Referer", MAIN_URL)
             .call()?;
 
         let html = response.into_string().with_context(|| {
@@ -199,52 +113,64 @@ impl Client {
 
         Ok(kuchiki::parse_html().one(html))
     }
-}
 
-/// Extract the book number, if any, from the book link.
-#[allow(clippy::filter_next)]
-fn get_book_number(node: &kuchiki::NodeRef) -> Result<Option<u8>> {
-    let text = VOLUME_SELECTOR
-        .filter(node.descendants().elements())
-        .next()
-        .context("book number not found")?
-        .text_contents();
+    fn search(&self, query: &str) -> Result<(Url, kuchiki::NodeRef)> {
+        let mut url = self.servers.borrow_mut().next().expect("server URL");
+        let mut i = 0;
 
-    if text.is_empty() {
-        return Ok(None);
-    }
+        loop {
+            i += 1;
 
-    text.trim_start_matches('#')
-        .parse::<u8>()
-        .context("invalid book number")
-        .map(Some)
-}
+            let res = self
+                .agent
+                .request_url("POST", url)
+                .set("accept", "text/html")
+                .set("Accept-Language", "fr")
+                .send_form(&[("q", query), ("language", "fr")]);
 
-/// Check if the series under `node` is the right one (i.e. matches `title`).
-#[allow(clippy::filter_next)]
-fn is_right_series(
-    node: &kuchiki::NodeRef,
-    title: &str,
-    exact_match: bool,
-) -> bool {
-    let title = normalize(title);
-
-    match TITLE_SELECTOR.filter(node.descendants().elements()).next() {
-        Some(node) => {
-            let text = node.text_contents().replace("!", "");
-            let text = text.trim().to_lowercase();
-
-            if exact_match {
-                text == title
-            } else {
-                text.starts_with(&title)
+            if res.is_err() {
+                // Move to another server if we still have some retry left.
+                if i <= 10 {
+                    url = self.servers.borrow_mut().next().expect("server URL");
+                    continue;
+                }
             }
-        },
-        None => false,
+
+            return res.context("search failed").and_then(|response| {
+                let html = response.into_string().with_context(|| {
+                    format!(
+                        "failed to read search result from {}",
+                        url.as_str()
+                    )
+                })?;
+
+                Ok((url.clone(), kuchiki::parse_html().one(html)))
+            });
+        }
     }
 }
 
-/// Normalize the series' title for bedetheque.
-fn normalize(title: &str) -> String {
-    title.to_lowercase()
+/// Check if the page is the right one.
+fn is_right_book(page: &kuchiki::NodeRef, volume: Option<u8>) -> bool {
+    // Using CSS selector would be cleaner but I'm lazy today...
+    let html = page.text_contents();
+
+    let mut result = MANGA_FORMAT_REGEX.is_match(&html);
+
+    if let Some(number) = volume {
+        if let Some(captures) = MANGA_VOLUME_REGEX.captures(&html) {
+            let book_volume = captures
+                .name("number")
+                .expect("invalid capture group for volume")
+                .as_str()
+                .parse::<u8>()
+                .expect("valid volume");
+
+            result = result && (book_volume == number);
+        } else {
+            result = false;
+        }
+    }
+
+    result
 }

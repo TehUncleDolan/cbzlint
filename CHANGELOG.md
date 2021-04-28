@@ -15,6 +15,11 @@ Possible sections are:
 
 ## [Unreleased] - ReleaseDate
 
+### Changed
+
+- Use Searx to find books on bedetheque, a lot more reliable than the previous
+  approach
+
 ## [0.1.3] - 2021-04-23
 
 ### Added

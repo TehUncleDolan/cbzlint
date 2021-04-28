@@ -54,7 +54,6 @@ static EXPECTED_DATE: Lazy<DateTime> = Lazy::new(|| {
 #[derive(Debug)]
 pub(crate) struct Book {
     path: PathBuf,
-    url: Url,
     title: String,
     volume: Option<u8>,
     authors: String,
@@ -64,10 +63,7 @@ pub(crate) struct Book {
 
 impl Book {
     /// Initialize a new book by extracting information from its name.
-    pub(crate) fn new(
-        client: &bedetheque::Client,
-        path: &Path,
-    ) -> Result<Self> {
+    pub(crate) fn new(path: &Path) -> Result<Self> {
         let filename = get_file_name(path);
 
         if path.extension() != Some(OsStr::new("cbz")) {
@@ -82,7 +78,7 @@ impl Book {
             bail!("cannot extract info from filename")
         };
 
-        Self::new_from_captures(client, path.to_owned(), &captures)
+        Ok(Self::new_from_captures(path.to_owned(), &captures))
     }
 
     /// Return the file name of the book.
@@ -90,21 +86,16 @@ impl Book {
         get_file_name(&self.path)
     }
 
-    /// Return the bedetheque URL used to check the metadata.
-    pub(crate) fn ref_url(&self) -> &Url {
-        &self.url
-    }
-
     /// Check the book and return a list of errors if any.
     pub(crate) fn check(
         &self,
-        client: &bedetheque::Client,
-    ) -> Result<Vec<Error>> {
+        client: &bedetheque::Client<'_>,
+    ) -> Result<(Url, Vec<Error>)> {
         let mut errors = Vec::new();
         let fp = fs::File::open(&self.path).context("open error")?;
         let mut cbz = ZipArchive::new(fp).context("read error")?;
 
-        self.check_book_metadata(client, &mut errors)?;
+        let source = self.check_book_metadata(client, &mut errors)?;
         for i in 0..cbz.len() {
             let mut entry =
                 cbz.by_index(i).context("failed to read ZIP entry")?;
@@ -124,14 +115,13 @@ impl Book {
             }
         }
 
-        Ok(errors)
+        Ok((source, errors))
     }
 
     fn new_from_captures(
-        client: &bedetheque::Client,
         path: PathBuf,
         captures: &regex::Captures<'_>,
-    ) -> Result<Self> {
+    ) -> Self {
         let title = captures
             .name("title")
             .expect("invalid capture group for title")
@@ -157,17 +147,15 @@ impl Book {
             .as_str()
             .parse::<usize>()
             .expect("valid width");
-        let url = client.find_book(&title, volume)?;
 
-        Ok(Self {
+        Self {
             path,
-            url,
             title,
             volume,
             authors,
             year,
             width,
-        })
+        }
     }
 
     /// Check the image.
@@ -221,11 +209,11 @@ impl Book {
     /// Check the book's metadata (authors, publication years, ...)
     fn check_book_metadata(
         &self,
-        client: &bedetheque::Client,
+        client: &bedetheque::Client<'_>,
         errors: &mut Vec<Error>,
-    ) -> Result<()> {
+    ) -> Result<Url> {
         let info = client
-            .fetch_info(&self.url)
+            .fetch_info(&self.title, self.volume)
             .context("failed to get metadata from bedetheque")?;
 
         if normalize(&info.authors) != normalize(&self.authors) {
@@ -236,7 +224,7 @@ impl Book {
             errors.push(Error::Year(info.years));
         }
 
-        Ok(())
+        Ok(info.source)
     }
 }
 

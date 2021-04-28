@@ -52,6 +52,7 @@
 // }}}
 
 use anyhow::{
+    ensure,
     Context,
     Result,
 };
@@ -65,16 +66,21 @@ mod bedetheque;
 mod cbz;
 mod error;
 mod metadata;
+mod searx;
 mod termio;
 
 fn main() -> Result<()> {
+    let serverlist = searx::fetch_serverlist()?;
+    println!("found {} Searx instances", serverlist.len());
+    ensure!(serverlist.len() >= 10, "not enough Searx instances");
+
     // Setup the bedetheque client.
-    let client = bedetheque::Client::new();
+    let client = bedetheque::Client::new(&serverlist);
 
     // Retrieve the list of CBZ to check.
     let books = env::args()
         .skip(1) // Skip the binary name.
-        .map(|path| get_books(&client, Path::new(&path)))
+        .map(|path| get_books(Path::new(&path)))
         .collect::<Result<Vec<_>>>()
         .context("failed to collect paths")?
         .into_iter()
@@ -84,14 +90,14 @@ fn main() -> Result<()> {
     // Check each book.
     for book in books {
         match book.check(&client) {
-            Ok(errors) => {
+            Ok((source, errors)) => {
                 // No error? Great!
                 if errors.is_empty() {
                     termio::print_ok(book.file_name())
                 } else {
                     // Report every error detected.
                     termio::print_err(book.file_name());
-                    println!("Checked against {}", book.ref_url().as_str());
+                    println!("Checked against {}", source.as_str());
                     for err in errors {
                         println!("==> {}", err);
                     }
@@ -100,7 +106,7 @@ fn main() -> Result<()> {
             Err(err) => {
                 // Failed to even check the book, inform the user.
                 termio::print_err(&format!(
-                    "failed to check {}: {}",
+                    "failed to check {}: {:?}",
                     book.file_name(),
                     err
                 ))
@@ -115,13 +121,10 @@ fn main() -> Result<()> {
 /// Get every CBZ file under `path`.
 ///
 /// If `path` is a CBZ instead of a directory, it's returned directly.
-fn get_books(
-    client: &bedetheque::Client,
-    path: &Path,
-) -> Result<Vec<cbz::Book>> {
+fn get_books(path: &Path) -> Result<Vec<cbz::Book>> {
     // Case 1. `path` is a file.
     if !path.is_dir() {
-        return Ok(match cbz::Book::new(client, path) {
+        return Ok(match cbz::Book::new(path) {
             Ok(cbz) => vec![cbz],
             Err(err) => {
                 skip_file(path, &err);
@@ -135,7 +138,7 @@ fn get_books(
         .filter_map(|res| {
             match res {
                 Ok(entry) => {
-                    match cbz::Book::new(client, &entry.path()) {
+                    match cbz::Book::new(&entry.path()) {
                         Ok(cbz) => Some(Ok(cbz)),
                         Err(err) => {
                             skip_file(&entry.path(), &err);

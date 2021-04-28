@@ -7,6 +7,7 @@ use std::{
     collections::BTreeSet,
     iter::FromIterator,
 };
+use url::Url;
 
 /// CSS selector for the information fields.
 static INFO_SELECTOR: Lazy<kuchiki::Selectors> = Lazy::new(|| {
@@ -27,6 +28,8 @@ static YEAR_REGEX: Lazy<Regex> = Lazy::new(|| {
 
 /// Volume metadata.
 pub(crate) struct VolumeInfo {
+    /// URL of the page used.
+    pub(crate) source: Url,
     /// Authors names.
     pub(crate) authors: String,
     /// Publicaton year of every editions.
@@ -34,7 +37,7 @@ pub(crate) struct VolumeInfo {
 }
 
 impl VolumeInfo {
-    pub(crate) fn new(page: &kuchiki::NodeRef) -> Self {
+    pub(crate) fn new(source: Url, page: &kuchiki::NodeRef) -> Self {
         let mut years = BTreeSet::new();
         let mut writers = BTreeSet::new();
         let mut pencillers = BTreeSet::new();
@@ -83,6 +86,7 @@ impl VolumeInfo {
         authors.extend(pencillers);
 
         Self {
+            source,
             authors: authors.join("-"),
             years,
         }
