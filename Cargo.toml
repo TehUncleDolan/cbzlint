@@ -15,7 +15,7 @@ imagesize    = { version = "0.8", default-features = false }
 kamadak-exif = { version = "0.5", default-features = false }
 kuchiki      = { version = "0.8", default-features = false }
 once_cell    = { version = "1.5", default-features = false }
-regex        = { version = "1.0", default-features = false, features = ["std"]  }
+regex        = "1.0"
 serde        = { version = "1.0", default-features = false, features = ["derive"] }
 termcolor    = { version = "1.0", default-features = false }
 ureq         = { version = "2.0", default-features = false, features = ["json", "tls"] }

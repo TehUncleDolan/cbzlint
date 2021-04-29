@@ -15,6 +15,10 @@ Possible sections are:
 
 ## [Unreleased] - ReleaseDate
 
+### Fixed
+
+- Restore correct regexp support
+
 ## [0.2.1] - 2021-04-29
 
 ### Fixed
