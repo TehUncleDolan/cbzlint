@@ -15,6 +15,10 @@ Possible sections are:
 
 ## [Unreleased] - ReleaseDate
 
+### Changed
+
+- Blacklist https://search.mdosch.de/
+
 ### Fixed
 
 - Restore original deps ^^"
