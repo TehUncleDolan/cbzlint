@@ -26,7 +26,7 @@ checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 
 [[package]]
 name = "cbzlint"
-version = "0.1.4-alpha.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "imagesize",
