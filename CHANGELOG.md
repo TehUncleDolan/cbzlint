@@ -15,6 +15,10 @@ Possible sections are:
 
 ## [Unreleased] - ReleaseDate
 
+### Changed
+
+- Blacklist https://search.modalogi.com/
+
 ### Fixed
 
 - Restore correct regexp support

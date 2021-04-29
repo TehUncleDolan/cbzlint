@@ -25,6 +25,7 @@ static BLACKLIST: Lazy<HashSet<Url>> = Lazy::new(|| {
     bl.insert(Url::parse("https://recherche.catmargue.org/").unwrap());
     bl.insert(Url::parse("https://search.jigsaw-security.com/").unwrap());
     bl.insert(Url::parse("https://search.jpope.org/").unwrap());
+    bl.insert(Url::parse("https://search.modalogi.com/").unwrap());
     bl.insert(Url::parse("https://search.snopyta.org/").unwrap());
     bl.insert(Url::parse("https://search.st8.at/").unwrap());
     bl.insert(Url::parse("https://search.stinpriza.org/").unwrap());
