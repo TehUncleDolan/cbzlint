@@ -15,6 +15,10 @@ Possible sections are:
 
 ## [Unreleased] - ReleaseDate
 
+### Changed
+
+- Blacklist more servers
+
 ### Fixed
 
 - Don't crash on volume overflow
