@@ -15,6 +15,10 @@ Possible sections are:
 
 ## [Unreleased] - ReleaseDate
 
+### Fixed
+
+- Restore original deps ^^"
+
 ## [0.2.2] - 2021-04-29
 
 ### Changed
