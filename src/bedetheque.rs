@@ -163,10 +163,10 @@ fn is_right_book(page: &kuchiki::NodeRef, volume: Option<u8>) -> bool {
                 .name("number")
                 .expect("invalid capture group for volume")
                 .as_str()
-                .parse::<u8>()
+                .parse::<u32>()
                 .expect("valid volume");
 
-            result = result && (book_volume == number);
+            result = result && (book_volume == u32::from(number));
         } else {
             result = false;
         }

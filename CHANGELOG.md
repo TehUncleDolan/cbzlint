@@ -15,6 +15,10 @@ Possible sections are:
 
 ## [Unreleased] - ReleaseDate
 
+### Fixed
+
+- Don't crash on volume overflow
+
 ## [0.2.3] - 2021-04-29
 
 ### Changed
