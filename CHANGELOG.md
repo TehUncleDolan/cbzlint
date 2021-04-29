@@ -15,6 +15,8 @@ Possible sections are:
 
 ## [Unreleased] - ReleaseDate
 
+## [0.2.2] - 2021-04-29
+
 ### Changed
 
 - Blacklist https://search.modalogi.com/
