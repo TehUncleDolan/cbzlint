@@ -15,6 +15,8 @@ Possible sections are:
 
 ## [Unreleased] - ReleaseDate
 
+## [0.2.1] - 2021-04-29
+
 ### Fixed
 
 - Restore HTTPS support
