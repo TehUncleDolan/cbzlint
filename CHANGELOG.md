@@ -15,6 +15,8 @@ Possible sections are:
 
 ## [Unreleased] - ReleaseDate
 
+## [0.2.5] - 2021-05-06
+
 ### Changed
 
 - Update the blacklist
