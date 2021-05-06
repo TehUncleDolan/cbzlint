@@ -28,6 +28,7 @@ static BLACKLIST: Lazy<HashSet<Url>> = Lazy::new(|| {
     bl.insert(Url::parse("https://privatesearch.app/").unwrap());
     bl.insert(Url::parse("https://recherche.catmargue.org/").unwrap());
     bl.insert(Url::parse("https://spot.ecloud.global/").unwrap());
+    bl.insert(Url::parse("https://search.disroot.org/").unwrap());
     bl.insert(Url::parse("https://search.ethibox.fr/").unwrap());
     bl.insert(Url::parse("https://search.jigsaw-security.com/").unwrap());
     bl.insert(Url::parse("https://search.jpope.org/").unwrap());
@@ -42,9 +43,11 @@ static BLACKLIST: Lazy<HashSet<Url>> = Lazy::new(|| {
     bl.insert(Url::parse("https://searx.devol.it/").unwrap());
     bl.insert(Url::parse("https://searx.dresden.network/").unwrap());
     bl.insert(Url::parse("https://searx.everdot.org/").unwrap());
+    bl.insert(Url::parse("https://searx.fmac.xyz/").unwrap());
     bl.insert(Url::parse("https://searx.fossencdi.org/").unwrap());
     bl.insert(Url::parse("https://searx.gnu.style/").unwrap());
     bl.insert(Url::parse("https://searx.hardwired.link/").unwrap());
+    bl.insert(Url::parse("https://searx.ir/").unwrap());
     bl.insert(Url::parse("https://searx.laquadrature.net/").unwrap());
     bl.insert(Url::parse("https://searx.lavatech.top/").unwrap());
     bl.insert(Url::parse("https://searx.lelux.fi/").unwrap());
@@ -60,6 +63,7 @@ static BLACKLIST: Lazy<HashSet<Url>> = Lazy::new(|| {
     bl.insert(Url::parse("https://searx.openhoofd.nl/").unwrap());
     bl.insert(Url::parse("https://searx.openpandora.org/").unwrap());
     bl.insert(Url::parse("https://searx.operationtulip.com/").unwrap());
+    bl.insert(Url::parse("https://searx.ouahpiti.info/").unwrap());
     bl.insert(Url::parse("https://searx.pwoss.org/").unwrap());
     bl.insert(Url::parse("https://searx.roflcopter.fr/").unwrap());
     bl.insert(Url::parse("https://searx.roughs.ru/").unwrap());
