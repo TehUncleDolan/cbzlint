@@ -6,7 +6,7 @@
     nonstandard_style,
     rust_2018_idioms,
     future_incompatible,
-    rustdoc,
+    rustdoc::all,
     missing_crate_level_docs,
     missing_docs,
     unreachable_pub,

@@ -15,6 +15,10 @@ Possible sections are:
 
 ## [Unreleased] - ReleaseDate
 
+### Fixed
+
+- Fix code for Rust 1.52
+
 ## [0.2.5] - 2021-05-06
 
 ### Changed

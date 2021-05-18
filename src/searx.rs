@@ -90,8 +90,8 @@ struct ServerList {
     instances: HashMap<Url, Instance>,
 }
 
-#[serde(rename_all = "lowercase")]
 #[derive(Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "lowercase")]
 enum NetworkType {
     Normal,
     Tor,
