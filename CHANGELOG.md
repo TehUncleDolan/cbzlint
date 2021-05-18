@@ -18,6 +18,7 @@ Possible sections are:
 ### Changed
 
 - Update the blacklist
+- Only check date for the expected last modified time
 
 ### Fixed
 

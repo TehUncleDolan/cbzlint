@@ -230,12 +230,10 @@ impl Book {
 
 /// Check that the date match the expected one.
 fn check_date(date: DateTime) -> bool {
-    // Seconds seems to be inaccurate, don't check it.
+    // Only check date, not time (weird issues for some Windows users).
     EXPECTED_DATE.year() == date.year()
         && EXPECTED_DATE.month() == date.month()
         && EXPECTED_DATE.day() == date.day()
-        && EXPECTED_DATE.hour() == date.hour()
-        && EXPECTED_DATE.minute() == date.minute()
 }
 
 /// Extract the file name, as UTF-8 string, from a file path.
