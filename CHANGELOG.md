@@ -18,6 +18,7 @@ Possible sections are:
 ### Fixed
 
 - Fix code for Rust 1.52
+- Handle non-digital release (e.g. scan)
 
 ## [0.2.5] - 2021-05-06
 

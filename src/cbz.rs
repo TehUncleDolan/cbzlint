@@ -33,7 +33,7 @@ use zip::{
 /// Regex to extract info from the name of a series' book.
 static SERIES_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
-            r#"^(?P<title>.+)(?: T(?P<volume>[0-9]+)) \((?P<authors>.+)\) \((?P<year>[0-9]{4})\) \[Digital-(?P<width>[0-9]+)\]"#,
+            r#"^(?P<title>.+)(?: T(?P<volume>[0-9]+)) \((?P<authors>.+)\) \((?P<year>[0-9]{4})\) \[\w+-(?P<width>[0-9]+)\]"#,
         )
         .expect("valid series regexp")
 });
@@ -41,7 +41,7 @@ static SERIES_REGEX: Lazy<Regex> = Lazy::new(|| {
 /// Regex to extract info from the name of a one-shot.
 static ONESHOT_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
-            r#"^(?P<title>.+) \((?P<authors>.+)\) \((?P<year>[0-9]{4})\) \[Digital-(?P<width>[0-9]+)\]"#,
+            r#"^(?P<title>.+) \((?P<authors>.+)\) \((?P<year>[0-9]{4})\) \[\w+-(?P<width>[0-9]+)\]"#,
         )
         .expect("valid one-shot regexp")
 });
