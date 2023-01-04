@@ -1,34 +1,17 @@
 //! CBZ check implementation.
 
-use crate::{
-    bedetheque,
-    error::Error,
-};
-use anyhow::{
-    bail,
-    Context,
-    Result,
-};
+use crate::{bedetheque, error::Error};
+use anyhow::{bail, Context, Result};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::{
     ffi::OsStr,
     fs,
-    io::{
-        BufReader,
-        Cursor,
-    },
-    path::{
-        Path,
-        PathBuf,
-    },
+    io::{BufReader, Cursor},
+    path::{Path, PathBuf},
 };
 use url::Url;
-use zip::{
-    read::ZipFile,
-    DateTime,
-    ZipArchive,
-};
+use zip::{read::ZipFile, DateTime, ZipArchive};
 
 /// Regex to extract info from the name of a series' book.
 static SERIES_REGEX: Lazy<Regex> = Lazy::new(|| {
@@ -41,21 +24,19 @@ static SERIES_REGEX: Lazy<Regex> = Lazy::new(|| {
 /// Regex to extract info from the name of a one-shot.
 static ONESHOT_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(
-            r#"^(?P<title>.+) \((?P<authors>.+)\) \((?P<year>[0-9]{4})\) \[\w+-(?P<width>[0-9]+)\]"#,
-        )
-        .expect("valid one-shot regexp")
+        r#"^(?P<title>.+) \((?P<authors>.+)\) \((?P<year>[0-9]{4})\) \[\w+-(?P<width>[0-9]+)\]"#,
+    )
+    .expect("valid one-shot regexp")
 });
 
 /// Expected modified date.
-static EXPECTED_DATE: Lazy<DateTime> = Lazy::new(|| {
-    DateTime::from_date_and_time(2000, 1, 1, 0, 0, 1).expect("valid date")
-});
+static EXPECTED_DATE: Lazy<DateTime> =
+    Lazy::new(|| DateTime::from_date_and_time(2000, 1, 1, 0, 0, 1).expect("valid date"));
 
 #[derive(Debug)]
 pub(crate) struct Book {
     path: PathBuf,
-    title: String,
-    volume: Option<u8>,
+    url: Url,
     authors: String,
     year: u16,
     width: usize,
@@ -63,7 +44,7 @@ pub(crate) struct Book {
 
 impl Book {
     /// Initialize a new book by extracting information from its name.
-    pub(crate) fn new(path: &Path) -> Result<Self> {
+    pub(crate) fn new(client: &bedetheque::Client, path: &Path) -> Result<Self> {
         let filename = get_file_name(path);
 
         if path.extension() != Some(OsStr::new("cbz")) {
@@ -78,7 +59,7 @@ impl Book {
             bail!("cannot extract info from filename")
         };
 
-        Ok(Self::new_from_captures(path.to_owned(), &captures))
+        Self::new_from_captures(client, path.to_owned(), &captures)
     }
 
     /// Return the file name of the book.
@@ -86,19 +67,20 @@ impl Book {
         get_file_name(&self.path)
     }
 
+    /// Return the bedetheque URL used to check the metadata.
+    pub(crate) fn ref_url(&self) -> &Url {
+        &self.url
+    }
+
     /// Check the book and return a list of errors if any.
-    pub(crate) fn check(
-        &self,
-        client: &bedetheque::Client<'_>,
-    ) -> Result<(Url, Vec<Error>)> {
+    pub(crate) fn check(&self, client: &bedetheque::Client) -> Result<Vec<Error>> {
         let mut errors = Vec::new();
         let fp = fs::File::open(&self.path).context("open error")?;
         let mut cbz = ZipArchive::new(fp).context("read error")?;
 
-        let source = self.check_book_metadata(client, &mut errors)?;
+        self.check_book_metadata(client, &mut errors)?;
         for i in 0..cbz.len() {
-            let mut entry =
-                cbz.by_index(i).context("failed to read ZIP entry")?;
+            let mut entry = cbz.by_index(i).context("failed to read ZIP entry")?;
 
             if !entry.is_file() {
                 continue;
@@ -115,13 +97,14 @@ impl Book {
             }
         }
 
-        Ok((source, errors))
+        Ok(errors)
     }
 
     fn new_from_captures(
+        client: &bedetheque::Client,
         path: PathBuf,
         captures: &regex::Captures<'_>,
-    ) -> Self {
+    ) -> Result<Self> {
         let title = captures
             .name("title")
             .expect("invalid capture group for title")
@@ -147,15 +130,15 @@ impl Book {
             .as_str()
             .parse::<usize>()
             .expect("valid width");
+        let url = client.find_book(&title, volume)?;
 
-        Self {
+        Ok(Self {
             path,
-            title,
-            volume,
+            url,
             authors,
             year,
             width,
-        }
+        })
     }
 
     /// Check the image.
@@ -166,15 +149,10 @@ impl Book {
     /// page).
     ///
     /// Also check the presence of EXIF metadata.
-    fn check_image(
-        &self,
-        entry: &mut ZipFile<'_>,
-        errors: &mut Vec<Error>,
-    ) -> Result<bool> {
+    fn check_image(&self, entry: &mut ZipFile<'_>, errors: &mut Vec<Error>) -> Result<bool> {
         let mut bytes: Vec<u8> = vec![];
-        std::io::copy(entry, &mut bytes).with_context(|| {
-            format!("failed to read image {}", entry.name())
-        })?;
+        std::io::copy(entry, &mut bytes)
+            .with_context(|| format!("failed to read image {}", entry.name()))?;
 
         // Check width.
         // DPR are sometimes edited, so allows 10% of variation.
@@ -196,24 +174,20 @@ impl Book {
             Ok(_) => {
                 errors.push(Error::Exif);
                 Ok(false)
-            },
+            }
             Err(exif::Error::NotFound(_)) => Ok(true),
-            Err(err) => {
-                Err(err).with_context(|| {
-                    format!("cannot check EXIF for {}", entry.name())
-                })
-            },
+            Err(err) => Err(err).with_context(|| format!("cannot check EXIF for {}", entry.name())),
         }
     }
 
     /// Check the book's metadata (authors, publication years, ...)
     fn check_book_metadata(
         &self,
-        client: &bedetheque::Client<'_>,
+        client: &bedetheque::Client,
         errors: &mut Vec<Error>,
-    ) -> Result<Url> {
+    ) -> Result<()> {
         let info = client
-            .fetch_info(&self.title, self.volume)
+            .fetch_info(&self.url)
             .context("failed to get metadata from bedetheque")?;
 
         if normalize(&info.authors) != normalize(&self.authors) {
@@ -224,7 +198,7 @@ impl Book {
             errors.push(Error::Year(info.years));
         }
 
-        Ok(info.source)
+        Ok(())
     }
 }
 

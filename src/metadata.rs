@@ -3,33 +3,24 @@
 use kuchiki::traits::*;
 use once_cell::sync::Lazy;
 use regex::Regex;
-use std::{
-    collections::BTreeSet,
-    iter::FromIterator,
-};
-use url::Url;
+use std::{collections::BTreeSet, iter::FromIterator};
 
 /// CSS selector for the information fields.
-static INFO_SELECTOR: Lazy<kuchiki::Selectors> = Lazy::new(|| {
-    kuchiki::Selectors::compile(".infos li").expect("invalid info selector")
-});
+static INFO_SELECTOR: Lazy<kuchiki::Selectors> =
+    Lazy::new(|| kuchiki::Selectors::compile(".infos li").expect("invalid info selector"));
 
 /// Regex to extract the writer or pencillers name.
 static AUTHOR_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"(?P<category>Scénario|Dessin) :\s+(?P<name>[^,]+)"#)
-        .expect("valid author regexp")
+    Regex::new(r#"(?P<category>Scénario|Dessin) :\s+(?P<name>[^,]+)"#).expect("valid author regexp")
 });
 
 /// Regex to extract the publication year.
 static YEAR_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"Dépot légal :\s+[0-9]{2}/(?P<year>[0-9]{4})"#)
-        .expect("valid year regexp")
+    Regex::new(r#"Dépot légal :\s+[0-9]{2}/(?P<year>[0-9]{4})"#).expect("valid year regexp")
 });
 
 /// Volume metadata.
 pub(crate) struct VolumeInfo {
-    /// URL of the page used.
-    pub(crate) source: Url,
     /// Authors names.
     pub(crate) authors: String,
     /// Publicaton year of every editions.
@@ -37,7 +28,7 @@ pub(crate) struct VolumeInfo {
 }
 
 impl VolumeInfo {
-    pub(crate) fn new(source: Url, page: &kuchiki::NodeRef) -> Self {
+    pub(crate) fn new(page: &kuchiki::NodeRef) -> Self {
         let mut years = BTreeSet::new();
         let mut writers = BTreeSet::new();
         let mut pencillers = BTreeSet::new();
@@ -86,7 +77,6 @@ impl VolumeInfo {
         authors.extend(pencillers);
 
         Self {
-            source,
             authors: authors.join("-"),
             years,
         }
