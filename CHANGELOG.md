@@ -17,6 +17,10 @@ Possible sections are:
 
 ## [0.3.0] - 2023-01-04
 
+### Changed
+
+- Revert Searx (too flaky)
+
 ## [0.2.6] - 2021-05-19
 
 ### Changed
