@@ -1,7 +1,4 @@
-use std::{
-    collections::BTreeSet,
-    fmt,
-};
+use std::{collections::BTreeSet, fmt};
 
 pub(crate) enum Error {
     Authors(String),
@@ -15,8 +12,8 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Authors(authors) => {
-                write!(f, "invalid authors, expected ({})", authors)
-            },
+                write!(f, "invalid authors, expected ({authors})")
+            }
             Self::Year(y) => {
                 let y = y.iter().map(ToString::to_string).collect::<Vec<_>>();
                 if y.len() == 1 {
@@ -24,16 +21,16 @@ impl fmt::Display for Error {
                 } else {
                     write!(f, "invalid year, expected one of {}", y.join(", "))
                 }
-            },
+            }
             Self::Width => {
                 write!(f, "some images have unexpected width")
-            },
+            }
             Self::Date => {
                 write!(f, "some images have an unexpected last modified date")
-            },
+            }
             Self::Exif => {
                 write!(f, "some images have EXIF metadata")
-            },
+            }
         }
     }
 }

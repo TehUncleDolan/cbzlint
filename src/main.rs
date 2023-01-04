@@ -30,7 +30,6 @@
     clippy::rest_pat_in_fully_bound_structs,
     clippy::unneeded_field_pattern,
     clippy::verbose_file_reads,
-    clippy::wrong_pub_self_convention,
     clippy::dbg_macro,
     clippy::let_underscore_must_use,
     clippy::todo,
@@ -80,20 +79,23 @@ fn main() -> Result<()> {
             Ok(errors) => {
                 // No error? Great!
                 if errors.is_empty() {
-                    termio::print_ok(book.file_name())
+                    termio::print_ok(book.file_name());
                 } else {
                     // Report every error detected.
                     termio::print_err(book.file_name());
                     println!("Checked against {}", book.ref_url().as_str());
                     for err in errors {
-                        println!("==> {}", err);
+                        println!("==> {err}");
                     }
                 }
-            }
+            },
             Err(err) => {
                 // Failed to even check the book, inform the user.
-                termio::print_err(&format!("failed to check {}: {:?}", book.file_name(), err))
-            }
+                termio::print_err(&format!(
+                    "failed to check {}: {err:?}",
+                    book.file_name(),
+                ));
+            },
         }
         println!();
     }
@@ -104,7 +106,10 @@ fn main() -> Result<()> {
 /// Get every CBZ file under `path`.
 ///
 /// If `path` is a CBZ instead of a directory, it's returned directly.
-fn get_books(client: &bedetheque::Client, path: &Path) -> Result<Vec<cbz::Book>> {
+fn get_books(
+    client: &bedetheque::Client,
+    path: &Path,
+) -> Result<Vec<cbz::Book>> {
     // Case 1. `path` is a file.
     if !path.is_dir() {
         return Ok(match cbz::Book::new(client, path) {
@@ -112,11 +117,11 @@ fn get_books(client: &bedetheque::Client, path: &Path) -> Result<Vec<cbz::Book>>
             Err(err) => {
                 skip_file(path, &err);
                 vec![]
-            }
+            },
         });
     }
     // Case 2. `path` is a directory.
-    fs::read_dir(&path)
+    fs::read_dir(path)
         .with_context(|| format!("failed to read dir {}", path.display()))?
         .filter_map(|res| {
             match res {
@@ -126,18 +131,19 @@ fn get_books(client: &bedetheque::Client, path: &Path) -> Result<Vec<cbz::Book>>
                         Err(err) => {
                             skip_file(&entry.path(), &err);
                             None // Skip this file.
-                        }
+                        },
                     }
-                }
-                Err(err) => Some(
-                    Err(err)
-                        .with_context(|| format!("cannot access entry under {}", path.display())),
-                ),
+                },
+                Err(err) => {
+                    Some(Err(err).with_context(|| {
+                        format!("cannot access entry under {}", path.display())
+                    }))
+                },
             }
         })
         .collect::<Result<Vec<_>>>()
 }
 
 fn skip_file(path: &Path, err: &anyhow::Error) {
-    termio::print_warn(&format!("skip {}: {}", path.display(), err));
+    termio::print_warn(&format!("skip {}: {err}", path.display()));
 }

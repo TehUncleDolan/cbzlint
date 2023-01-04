@@ -134,7 +134,7 @@ impl Client {
         for node in nodes {
             let attributes = node.attributes.borrow();
             let link = attributes.get("href").context("book URL not found")?;
-            let url = Url::parse(link).with_context(|| format!("invalid book URL `{}`", link))?;
+            let url = Url::parse(link).with_context(|| format!("invalid book URL `{link}`"))?;
 
             let number = get_book_number(node.as_node())?;
 
@@ -198,7 +198,7 @@ fn is_right_series(node: &kuchiki::NodeRef, title: &str, exact_match: bool) -> b
 
     match TITLE_SELECTOR.filter(node.descendants().elements()).next() {
         Some(node) => {
-            let text = node.text_contents().replace("!", "");
+            let text = node.text_contents().replace('!', "");
             let text = text.trim().to_lowercase();
 
             if exact_match {

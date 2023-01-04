@@ -1,13 +1,7 @@
 //! Terminal I/O, with colors!
 
 use std::io::Write;
-use termcolor::{
-    Color,
-    ColorChoice,
-    ColorSpec,
-    StandardStream,
-    WriteColor,
-};
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 /// Print an OK message, in green.
 pub(crate) fn print_ok(msg: &str) {
@@ -16,7 +10,7 @@ pub(crate) fn print_ok(msg: &str) {
     stdout
         .set_color(ColorSpec::new().set_fg(Some(Color::Green)))
         .expect("set color");
-    writeln!(&mut stdout, "OK    {}", msg).expect("write message");
+    writeln!(&mut stdout, "OK    {msg}").expect("write message");
 
     stdout.reset().expect("reset color");
 }
@@ -28,7 +22,7 @@ pub(crate) fn print_warn(msg: &str) {
     stdout
         .set_color(ColorSpec::new().set_fg(Some(Color::Yellow)))
         .expect("set color");
-    writeln!(&mut stdout, "WARN  {}", msg).expect("write message");
+    writeln!(&mut stdout, "WARN  {msg}").expect("write message");
 
     stdout.reset().expect("reset color");
 }
@@ -40,7 +34,7 @@ pub(crate) fn print_err(msg: &str) {
     stdout
         .set_color(ColorSpec::new().set_fg(Some(Color::Red)))
         .expect("set color");
-    writeln!(&mut stdout, "ERROR {}", msg).expect("write message");
+    writeln!(&mut stdout, "ERROR {msg}").expect("write message");
 
     stdout.reset().expect("reset color");
 }
